@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css'
+import { io } from 'socket.io-client';
 
 
 function Form({ runCommand }) {
@@ -62,37 +63,37 @@ function CommandInterface() {
   const [command, setCommand] = useState('');
   const [output, setOutput] = useState('');
   const outputRef = useRef(null);
-  const wsRef = useRef(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    wsRef.current = new WebSocket('ws://localhost:3000');
+    socketRef.current = io('http://localhost:3000');
 
-    wsRef.current.onopen = () => {
-      console.log('WebSocket connection established');
-    };
+    socketRef.current.on('connect', () => {
+      console.log('Socket.IO connection established');
+    });
 
-    wsRef.current.onmessage = (event) => {
-      setOutput(prevOutput => prevOutput + event.data + '\n');
-    };
+    socketRef.current.on('message', (data) => {
+      setOutput(prevOutput => prevOutput + data + '\n');
+    });
 
-    wsRef.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error);
+    });
 
-    wsRef.current.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
+    socketRef.current.on('disconnect', () => {
+      console.log('Socket.IO connection closed');
+    });
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
       }
     };
   }, []);
 
   const runCommand = (cmd) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(cmd);
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.send(cmd);
     }
   };
 
@@ -108,9 +109,15 @@ function CommandInterface() {
         Configure Devices
       </h1>
       <Form runCommand={runCommand} />
-      <CustomCommand command={command} setCommand={setCommand} runCommand={runCommand} output={output} outputRef={outputRef} />
+      <CustomCommand
+        command={command}
+        setCommand={setCommand}
+        runCommand={runCommand}
+        output={output}
+        outputRef={outputRef}
+      />
     </div>
-  )
+  );
 }
 
 function CustomCommand({ command, setCommand, runCommand, output, outputRef }) {
