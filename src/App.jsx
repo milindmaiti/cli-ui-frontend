@@ -2,13 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css'
 
 
-function Form() {
+function Form({ runCommand }) {
   function onFormSubmit(event) {
 
     event.preventDefault();
     const formData = new FormData(event.target);
     console.log(formData.get("device"));
     console.log(formData.get("cluster"));
+
+    if (event.nativeEvent.submitter.value == "configure")
+      runCommand("ls");
+    else
+      runCommand("pwd");
+
     console.log(event.nativeEvent.submitter.value);
   }
   return (
@@ -84,16 +90,9 @@ function CommandInterface() {
     };
   }, []);
 
-  const runCommand = () => {
+  const runCommand = (cmd) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(command);
-      setCommand(''); // Clear the input field
-    }
-  };
-
-  const handleKeyPress = (event) => {
-    if (event.key === 'Enter') {
-      runCommand();
+      wsRef.current.send(cmd);
     }
   };
 
@@ -104,32 +103,46 @@ function CommandInterface() {
   }, [output]);
 
   return (
+    <div className="flex flex-col items-center justify-center">
+      <h1 className="font-sans text-3xl m-5">
+        Configure Devices
+      </h1>
+      <Form runCommand={runCommand} />
+      <CustomCommand command={command} setCommand={setCommand} runCommand={runCommand} output={output} outputRef={outputRef} />
+    </div>
+  )
+}
+
+function CustomCommand({ command, setCommand, runCommand, output, outputRef }) {
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter') {
+      runCommand(command);
+      setCommand('');
+    }
+  };
+
+  return (
     <div>
+      <pre className="bg-black text-white" ref={outputRef} style={{ maxHeight: '400px', overflow: 'auto' }}>
+        {output}
+      </pre>
       <h1>Command Output</h1>
       <input
         type="text"
+        className="shadow appearance-none border border-red-500 rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
         value={command}
         onChange={(e) => setCommand(e.target.value)}
         onKeyPress={handleKeyPress}
         placeholder="Enter command"
       />
-      <pre ref={outputRef} style={{ maxHeight: '400px', overflow: 'auto' }}>
-        {output}
-      </pre>
     </div>
   );
 }
 function App() {
-
   return (
-    <div className="flex flex-col items-center justify-center">
-      <h1 className="font-sans text-3xl m-5">
-        Configure Devices
-      </h1>
-      <Form />
-      <CommandInterface />
-    </div>
-  )
+
+    <CommandInterface />
+  );
 }
 
 export default App
